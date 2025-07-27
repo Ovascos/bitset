@@ -112,13 +112,23 @@ void bitset::set(size_t index, bool value) {
 
   // get the index of the data field
   unsigned d_idx = get_offset(_bits.data(), index);
+
   // check if the corresponding data field exists
   if (!mb) {
+    assert(value);
     // insert the new field
     _bits.insert(_bits.begin() + d_idx, 0x00);
     set_bit(_bits[mp], mo);
   }
+
   (value ? set_bit : clear_bit)(_bits[d_idx], index % BITS);
+
+  // clear the data field if empty
+  if (_bits[d_idx] == 0x00) {
+    assert(!value);
+    _bits.erase(_bits.begin() + d_idx);
+    clear_bit(_bits[mp], mo);
+  }
 }
 
 void bitset::clear() {
@@ -128,8 +138,12 @@ void bitset::clear() {
 }
 
 bool bitset::empty() const {
-  assert(!_bits.empty());
-  return _bits[0] == 0;
+  auto it = _bits.cbegin();
+  assert(it != _bits.cend());
+  do {
+    if (*it & M_DATA_MAK) return false;
+  } while (*(it++) & M_DATA_MAK);
+  return true;
 }
 
 size_t bitset::capacity() const {
@@ -146,3 +160,16 @@ size_t bitset::count() const {
   while(it != _bits.cend()) cnt += count_bits(*(it++));
   return cnt;
 }
+
+bool bitset::operator==(const bitset &other) const {
+  assert(capacity() == other.capacity());
+  assert(_bits.size() == other._bits.size());
+  return _bits == other._bits;
+}
+
+bool bitset::operator!=(const bitset &other) const {
+  assert(capacity() == other.capacity());
+  assert(_bits.size() == other._bits.size());
+  return _bits != other._bits;
+}
+

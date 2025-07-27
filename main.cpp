@@ -9,7 +9,7 @@
 #define ROUNDS 10000000
 
 int main() {
-  bitset bs;
+  bitset bs, bs2;
   std::bitset<MAX> ref;
 
   static_assert(RAND_MAX > MAX);
@@ -36,12 +36,24 @@ int main() {
     ref.set(r, val);
   }
 
-  assert(ref.count() == bs.count());
-
   // check
+  assert(ref.count() == bs.count());
   for (int i = 0; i < MAX; ++i) {
     assert(bs[i] == ref[i]);
   }
+
+  // clear all
+  for (int i = MAX/2+1; i < MAX; ++i) {
+    bs.set(i, false);
+  }
+
+  bs2.resize(MAX);
+  assert(bs2.empty());
+  for (int i = 0; i < MAX/2; ++i) {
+    if (ref[i]) bs2.set(i, true);
+  }
+
+  assert(bs == bs2);
 
   return 0;
 }
