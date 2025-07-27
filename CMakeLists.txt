@@ -3,6 +3,5 @@ project(bitset)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(bitset main.cpp
-        bitset.cpp
-        bitset.hpp)
+add_subdirectory(test)
+add_library(bitset STATIC bitset.cpp bitset.hpp)
