@@ -25,6 +25,9 @@ public:
   /** Gets the current capacity of the bitset. */
   size_t capacity() const;
 
+  /** Resizes the bitset to accomondate at least size values. */
+  void resize(size_t size);
+
   /** Counts the number of bits set to true in the bitset. */
   size_t count() const;
 

@@ -58,8 +58,23 @@ bitset::bitset(size_t size) : _bits(MP(size) + 1, M_NEXT_MSK) {
   _bits.back() = 0;
 }
 
+void bitset::resize(size_t size) {
+  if (size <= capacity())
+    return;
+
+  auto it = _bits.begin();
+  while(*(it++) & M_NEXT_MSK);
+  *(it - 1) |= M_NEXT_MSK;
+
+  size_t cnt_n = MP(size) + 1;
+  size_t cnt_m = it - _bits.begin();
+  assert(cnt_m < cnt_n);
+  unsigned n = cnt_n - cnt_m;
+  it = _bits.insert(it, n, M_NEXT_MSK);
+  *(it + n - 1) = 0x00;
+}
+
 // TODO: all with the same size? use a manager? Pass data offset via param from manager?
-// TODO extending metadata
 
 /** Gets the offset in the data, based on the metadata and index. */
 static inline unsigned get_offset(const uint64_t *md, size_t index) {
