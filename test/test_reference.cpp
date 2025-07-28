@@ -214,3 +214,70 @@ TEST_CASE("xor") {
   auto r = r1 ^ r2;
   REQUIRE(b == r);
 }
+
+// subset for std::bitset
+template<size_t I>
+static bool operator<=(const std::bitset<I> &l, const std::bitset<I> &r) {
+  return (l & ~r) == 0;
+}
+
+template<size_t I>
+static bool operator<(const std::bitset<I> &l, const std::bitset<I> &r) {
+  return l <= r && l != r;
+}
+
+TEST_CASE("subset") {
+  const size_t MAX = 3000;
+  const size_t RND = 500;
+
+  bitset b1(MAX), b2(MAX);
+  std::bitset<MAX> r1, r2;
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b1.set(r, val);
+    r1.set(r, val);
+  }
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b2.set(r, val);
+    r2.set(r, val);
+  }
+
+  REQUIRE(b1 == r1);
+  REQUIRE(b2 == r2);
+  bool b = b1 < b2;
+  bool r = r1 < r2;
+  REQUIRE(b == r);
+}
+
+TEST_CASE("subset-proper") {
+  const size_t MAX = 3000;
+  const size_t RND = 500;
+
+  bitset b1(MAX), b2(MAX);
+  std::bitset<MAX> r1, r2;
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b1.set(r, val);
+    r1.set(r, val);
+  }
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b2.set(r, val);
+    r2.set(r, val);
+  }
+
+  REQUIRE(b1 == r1);
+  REQUIRE(b2 == r2);
+  bool b = b1 <= b2;
+  bool r = r1 <= r2;
+  REQUIRE(b == r);
+}
