@@ -158,3 +158,31 @@ TEST_CASE("and") {
   auto r = r1 & r2;
   REQUIRE(b == r);
 }
+
+TEST_CASE("or") {
+  const size_t MAX = 3000;
+  const size_t RND = 500;
+
+  bitset b1(MAX), b2(MAX);
+  std::bitset<MAX> r1, r2;
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b1.set(r, val);
+    r1.set(r, val);
+  }
+
+  for (int i = 0; i < RND; ++i) {
+    unsigned r = random() % MAX;
+    bool val = random() % 2;
+    b2.set(r, val);
+    r2.set(r, val);
+  }
+
+  REQUIRE(b1 == r1);
+  REQUIRE(b2 == r2);
+  bitset b = b1 | b2;
+  auto r = r1 | r2;
+  REQUIRE(b == r);
+}
