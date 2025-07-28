@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <bit>
+#include <algorithm>
 
 #define BITS   (sizeof(uint64_t) * 8)
 
@@ -246,6 +247,8 @@ bool bitset::operator>(const bitset &other) const {
 typedef uint64_t (*op_t)(uint64_t, uint64_t);
 
 static bitset::bitstore combine(const bitset::bitstore &a, const bitset::bitstore &b, const op_t op) {
+  assert(a.capacity() == b.capacity());
+
   auto it1 = a.cbegin();
   auto it2 = b.cbegin();
   while (*(it1++) & *(it2++) & M_NEXT_MSK);
@@ -301,4 +304,59 @@ bitset bitset::operator^(const bitset &other) const {
 bitset bitset::operator-(const bitset &other) const {
   const auto o = [](uint64_t a, uint64_t b) { return a ^ (a & b); };
   return bitset(std::move(combine(_bits, other._bits, o)));
+}
+
+static void update(bitset::bitstore &a, const bitset::bitstore &b, const op_t op) {
+  assert(a.capacity() == b.capacity());
+
+  auto it1 = a.begin();
+  auto it2 = b.cbegin();
+  while (*(it1++) & *(it2++) & M_NEXT_MSK);
+
+  // check data
+  auto m1 = a.begin();
+  auto m2 = b.cbegin();
+  do {
+    uint64_t v1 = *m1 & M_DATA_MSK;
+    uint64_t v2 = *m2 & M_DATA_MSK;
+    uint64_t o = 0;
+    int rem = BITS - 1;
+    for (; v1 | v2; v1 >>= 1, v2 >>= 1, o >>= 1) {
+      -- rem;
+      uint64_t a1 = LB(v1) ? *(it1) : 0;
+      uint64_t a2 = LB(v2) ? *(it2++) : 0;
+      uint64_t v = op(a1, a2);
+      if (LB(v1)) {
+        *it1 = v;
+        it1++;
+        o |= (v ? MSK_HI(1) : 0);
+      } else if (v) {
+        it1 = a.insert(it1, v);
+        it1++;
+        o |= MSK_HI(1);
+      }
+    }
+    assert(rem >= 0);
+    o >>= rem;
+    assert((o & M_DATA_MSK) == o);
+  } while (*(m1++) & *(m2++) & M_NEXT_MSK);
+  assert((*(m1-1) & M_NEXT_MSK) == (*(m2-1) & M_NEXT_MSK));
+
+  // clear all empty fields
+  a.erase(std::remove(m1, a.end(), 0), a.end());
+}
+
+void bitset::operator&=(const bitset &other) {
+  const auto o = [](uint64_t a, uint64_t b) { return a & b; };
+  update(_bits, other._bits, o);
+}
+
+void bitset::operator|=(const bitset &other) {
+  const auto o = [](uint64_t a, uint64_t b) { return a | b; };
+  update(_bits, other._bits, o);
+}
+
+void bitset::operator^=(const bitset &other) {
+  const auto o = [](uint64_t a, uint64_t b) { return a ^ b; };
+  update(_bits, other._bits, o);
 }
