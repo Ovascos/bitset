@@ -1,8 +1,11 @@
 #include "bitset.hpp"
 
 #include <cassert>
-#include <bit>
 #include <algorithm>
+
+#if __cplusplus >= 202002L
+#include <bit>
+#endif
 
 #define BITS   (sizeof(uint64_t) * 8)
 
@@ -45,7 +48,11 @@ static inline void clear_bit(uint64_t &b, unsigned n) {
 }
 
 static inline unsigned count_bits(uint64_t b, uint64_t m = -1) {
+#if __cplusplus >= 202002L
   return std::popcount(b & m);
+#else
+  return __builtin_popcountll(b & m);
+#endif
 }
 
 /** Counts the number of bits set in b within the first n bits. */
