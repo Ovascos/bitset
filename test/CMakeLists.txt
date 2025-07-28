@@ -12,6 +12,6 @@ include(Catch)
 enable_testing()
 add_executable(bitset_test test_reference.cpp
         test_subset.cpp
-        test_implace.cpp)
+        test_inplace.cpp)
 target_link_libraries(bitset_test PUBLIC bitset PRIVATE Catch2WithMain)
 catch_discover_tests(bitset_test)
