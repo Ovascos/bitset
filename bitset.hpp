@@ -6,8 +6,8 @@
 
 class bitset {
 public:
-  bitset();
-  explicit bitset(size_t size);
+  bitset() noexcept;
+  explicit bitset(size_t size) noexcept;
 
   void set(size_t index, bool value);
   bool get(size_t index) const;
@@ -50,6 +50,7 @@ public:
   // comparison
   bool operator==(const bitset& other) const;
   bool operator!=(const bitset& other) const;
+
   /**
    * @brief Checks if this bitset is a subset of another bitset.
    */

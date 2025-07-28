@@ -21,7 +21,7 @@
 #define MO(b)  ((b / BITS) % MS)
 // bitmask of the next metadata identifier (MSBit) and data fields
 #define M_NEXT_MSK  MSK_HI(1)
-#define M_DATA_MAK  (~M_NEXT_MSK)
+#define M_DATA_MSK  (~M_NEXT_MSK)
 
 
 /** Extract the n-th bit of b. */
@@ -49,11 +49,11 @@ static inline unsigned count_bits_lo(uint64_t b, unsigned n) {
   return count_bits(b, MSK_LO(n));
 }
 
-bitset::bitset() : _bits(1) {
+bitset::bitset() noexcept : _bits(1) {
   assert(_bits[0] == 0);
 }
 
-bitset::bitset(size_t size) : _bits(MP(size) + 1, M_NEXT_MSK) {
+bitset::bitset(size_t size) noexcept : _bits(MP(size) + 1, M_NEXT_MSK) {
   // clear the last entry
   _bits.back() = 0;
 }
@@ -82,7 +82,7 @@ static inline unsigned get_offset(const uint64_t *md, size_t index) {
   const uint64_t *p = md;
   while (index >= MMS) {
     assert(*md & M_NEXT_MSK);
-    cnt += count_bits(*(p++), M_DATA_MAK);
+    cnt += count_bits(*(p++), M_DATA_MSK);
     index -= MMS;
   }
   assert(MP(index) == 0);
@@ -141,8 +141,8 @@ bool bitset::empty() const {
   auto it = _bits.cbegin();
   assert(it != _bits.cend());
   do {
-    if (*it & M_DATA_MAK) return false;
-  } while (*(it++) & M_DATA_MAK);
+    if (*it & M_DATA_MSK) return false;
+  } while (*(it++) & M_DATA_MSK);
   return true;
 }
 
