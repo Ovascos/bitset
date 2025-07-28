@@ -212,7 +212,7 @@ static bool subset_check(const bitset::bitstore &a, const bitset::bitstore &b, b
     uint64_t s = ~v1 & v2; // skip
     uint64_t c = v1 & v2;  // check
     assert(!(v1 & ~v2)); // checked above
-    assert(!(s ^ c)); // either check or skip
+    assert(!(s & c)); // either check or skip
     for (; c; c >>= 1, s >>= 1) {
       if (LB(c)) {
         if (!((proper ? subset_proper : subset)(*it1, *it2))) return false;

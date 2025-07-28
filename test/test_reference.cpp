@@ -226,7 +226,7 @@ static bool operator<(const std::bitset<I> &l, const std::bitset<I> &r) {
   return l <= r && l != r;
 }
 
-TEST_CASE("subset") {
+TEST_CASE("ref: subset") {
   const size_t MAX = 3000;
   const size_t RND = 500;
 
@@ -254,7 +254,7 @@ TEST_CASE("subset") {
   REQUIRE(b == r);
 }
 
-TEST_CASE("subset-proper") {
+TEST_CASE("ref: subset-proper") {
   const size_t MAX = 3000;
   const size_t RND = 500;
 

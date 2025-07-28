@@ -10,6 +10,7 @@ list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 include(Catch)
 
 enable_testing()
-add_executable(bitset_test test_reference.cpp)
+add_executable(bitset_test test_reference.cpp
+        test_subset.cpp)
 target_link_libraries(bitset_test PUBLIC bitset PRIVATE Catch2WithMain)
 catch_discover_tests(bitset_test)
