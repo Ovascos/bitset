@@ -12,6 +12,9 @@
 // mask the n-th bit
 #define MSK_BT(N)  ((uint64_t)1 << (N))
 
+// lowest bit
+#define LB(X) (X & MSK_BT(0))
+
 // metadate capacity
 #define MS     ((sizeof(uint64_t) * 8) - 1)
 // bits per metadata block
@@ -57,6 +60,8 @@ bitset::bitset(size_t size) noexcept : _bits(MP(size) + 1, M_NEXT_MSK) {
   // clear the last entry
   _bits.back() = 0;
 }
+
+bitset::bitset(std::vector<uint64_t> &&v) noexcept : _bits(v) { }
 
 void bitset::resize(size_t size) {
   if (size <= capacity())
@@ -173,3 +178,48 @@ bool bitset::operator!=(const bitset &other) const {
   return _bits != other._bits;
 }
 
+bitset bitset::operator&(const bitset &other) const {  // check metadata
+  auto it1 = _bits.cbegin();
+  auto it2 = other._bits.cbegin();
+  while (*(it1++) & *(it2++) & M_NEXT_MSK);
+
+  std::vector<uint64_t> out(it1 - _bits.cbegin(), 0x00);
+
+  // check data
+  auto m1 = _bits.cbegin();
+  auto m2 = other._bits.cbegin();
+  size_t mo = 0;
+  do {
+    uint64_t v1 = *m1 & M_DATA_MSK;
+    uint64_t v2 = *m2 & M_DATA_MSK;
+    uint64_t s1 = v1 & ~v2; // skip 1
+    uint64_t s2 = ~v1 & v2; // skip 2
+    uint64_t c = v1 & v2;  // check
+    uint64_t o = 0;
+    int rem = BITS - 1;
+    for (; c; c >>= 1, s1 >>= 1, s2 >>= 1, o >>= 1) {
+      -- rem;
+      if (LB(c)) {
+        uint64_t v = *it1 & *it2;
+        if (v) {
+          o |= MSK_HI(1);
+          out.push_back(v);
+        }
+        it1++; it2++;
+      } else if (LB(s1)) {
+        it1++;
+      } else if (LB(s2)) {
+        it2++;
+      }
+    }
+    assert(rem >= 0);
+    o >>= (rem);
+    it1 += count_bits(s1);
+    it2 += count_bits(s2);
+    assert((o & M_DATA_MSK) == o);
+    out[mo++] = o | M_NEXT_MSK;
+  } while (*(m1++) & *(m2++) & M_NEXT_MSK);
+  out[mo-1] &= ~M_NEXT_MSK;
+
+  return bitset(std::move(out));
+}

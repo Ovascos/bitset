@@ -60,6 +60,7 @@ public:
   bool operator>(const bitset& other) const;
 
 private:
+  explicit bitset(std::vector<uint64_t> &&v) noexcept;
   std::vector<uint64_t> _bits;
 };
 
