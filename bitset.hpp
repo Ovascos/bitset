@@ -35,7 +35,8 @@ public:
   bitset operator&(const bitset& other) const;
   bitset operator|(const bitset& other) const;
   bitset operator^(const bitset& other) const;
-  bitset operator~() const;
+  // not yet implemented (too expensive)
+  //bitset operator~() const;
 
   /**
    * @brief Subtracts the bits of another bitset from this one.
@@ -59,9 +60,11 @@ public:
   bool operator<(const bitset& other) const;
   bool operator>(const bitset& other) const;
 
+  using bitstore = std::vector<uint64_t>;
+
 private:
-  explicit bitset(std::vector<uint64_t> &&v) noexcept;
-  std::vector<uint64_t> _bits;
+  explicit bitset(bitstore &&v) noexcept;
+  bitstore _bits;
 };
 
 #endif //BITSET_HPP

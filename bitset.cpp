@@ -61,7 +61,7 @@ bitset::bitset(size_t size) noexcept : _bits(MP(size) + 1, M_NEXT_MSK) {
   _bits.back() = 0;
 }
 
-bitset::bitset(std::vector<uint64_t> &&v) noexcept : _bits(v) { }
+bitset::bitset(bitstore &&v) noexcept : _bits(v) { }
 
 void bitset::resize(size_t size) {
   if (size <= capacity())
@@ -195,7 +195,7 @@ static inline bool subset_proper(uint64_t a, uint64_t b) {
   return subset(a, b) && a != b;
 }
 
-static bool subset_check(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b, bool proper) {
+static bool subset_check(const bitset::bitstore &a, const bitset::bitstore &b, bool proper) {
   // check metadata
   auto it1 = a.cbegin();
   auto it2 = b.cbegin();
@@ -243,62 +243,18 @@ bool bitset::operator>(const bitset &other) const {
   return subset_check(other._bits, _bits, true);
 }
 
-bitset bitset::operator&(const bitset &other) const {  // check metadata
-  auto it1 = _bits.cbegin();
-  auto it2 = other._bits.cbegin();
+typedef uint64_t (*op_t)(uint64_t, uint64_t);
+
+static bitset::bitstore combine(const bitset::bitstore &a, const bitset::bitstore &b, const op_t op) {
+  auto it1 = a.cbegin();
+  auto it2 = b.cbegin();
   while (*(it1++) & *(it2++) & M_NEXT_MSK);
 
-  std::vector<uint64_t> out(it1 - _bits.cbegin(), 0x00);
+  bitset::bitstore out(it1 - a.cbegin());
 
   // check data
-  auto m1 = _bits.cbegin();
-  auto m2 = other._bits.cbegin();
-  size_t mo = 0;
-  do {
-    uint64_t v1 = *m1 & M_DATA_MSK;
-    uint64_t v2 = *m2 & M_DATA_MSK;
-    uint64_t s1 = v1 & ~v2; // skip 1
-    uint64_t s2 = ~v1 & v2; // skip 2
-    uint64_t c = v1 & v2;  // check
-    uint64_t o = 0;
-    int rem = BITS - 1;
-    for (; c; c >>= 1, s1 >>= 1, s2 >>= 1, o >>= 1) {
-      -- rem;
-      if (LB(c)) {
-        uint64_t v = *it1 & *it2;
-        if (v) {
-          o |= MSK_HI(1);
-          out.push_back(v);
-        }
-        it1++; it2++;
-      } else if (LB(s1)) {
-        it1++;
-      } else if (LB(s2)) {
-        it2++;
-      }
-    }
-    assert(rem >= 0);
-    o >>= (rem);
-    it1 += count_bits(s1);
-    it2 += count_bits(s2);
-    assert((o & M_DATA_MSK) == o);
-    out[mo++] = o | M_NEXT_MSK;
-  } while (*(m1++) & *(m2++) & M_NEXT_MSK);
-  out[mo-1] &= ~M_NEXT_MSK;
-
-  return bitset(std::move(out));
-}
-
-bitset bitset::operator|(const bitset &other) const {
-  auto it1 = _bits.cbegin();
-  auto it2 = other._bits.cbegin();
-  while (*(it1++) & *(it2++) & M_NEXT_MSK);
-
-  std::vector<uint64_t> out(it1 - _bits.cbegin());
-
-  // check data
-  auto m1 = _bits.cbegin();
-  auto m2 = other._bits.cbegin();
+  auto m1 = a.cbegin();
+  auto m2 = b.cbegin();
   size_t mo = 0;
   do {
     uint64_t v1 = *m1 & M_DATA_MSK;
@@ -309,7 +265,7 @@ bitset bitset::operator|(const bitset &other) const {
       -- rem;
       uint64_t a1 = LB(v1) ? *(it1++) : 0;
       uint64_t a2 = LB(v2) ? *(it2++) : 0;
-      uint64_t v = a1 | a2;
+      uint64_t v = op(a1, a2);
       if (v) {
         o |= MSK_HI(1);
         out.push_back(v);
@@ -324,5 +280,25 @@ bitset bitset::operator|(const bitset &other) const {
   // clear the next bit for the last metadata word
   out[mo-1] &= ~M_NEXT_MSK;
 
-  return bitset(std::move(out));
+  return std::move(out);
+}
+
+bitset bitset::operator&(const bitset &other) const {  // check metadata
+  const auto o = [](uint64_t a, uint64_t b) { return a & b; };
+  return bitset(std::move(combine(_bits, other._bits, o)));
+}
+
+bitset bitset::operator|(const bitset &other) const {
+  const auto o = [](uint64_t a, uint64_t b) { return a | b; };
+  return bitset(std::move(combine(_bits, other._bits, o)));
+}
+
+bitset bitset::operator^(const bitset &other) const {
+  const auto o = [](uint64_t a, uint64_t b) { return a ^ b; };
+  return bitset(std::move(combine(_bits, other._bits, o)));
+}
+
+bitset bitset::operator-(const bitset &other) const {
+  const auto o = [](uint64_t a, uint64_t b) { return a ^ (a & b); };
+  return bitset(std::move(combine(_bits, other._bits, o)));
 }
