@@ -2,6 +2,14 @@
 
 #include "../bitset.hpp"
 
+TEST_CASE("inplace: 0 |= 1") {
+  bitset a(1000);
+  bitset b(1000);
+  b.set(0, true);
+  a |= b;
+  REQUIRE(a.get(0) == true);
+}
+
 TEST_CASE("inplace: and") {
   const size_t CNT = 2000;
   const size_t SZE = 4000;
