@@ -10,8 +10,17 @@
 #define BITS   (sizeof(uint64_t) * 8)
 
 // mask the lower/upper n bits
-#define MSK_LO(N)  (((uint64_t)1 << (N)) - 1)
-#define MSK_HI(N)  (~(((uint64_t)-1) >> (N)))
+#define MSK_LO(N)  msk_lo(N)
+#define MSK_HI(N)  msk_hi(N)
+static inline constexpr uint64_t msk_lo(const unsigned n) {
+  assert(n <= 64);
+  return ~(-1ULL << (n & 0x3F)) - (n >> 6);
+}
+
+static inline constexpr uint64_t msk_hi(const unsigned n) {
+  assert(n <= 64);
+  return ~(-1ULL >> (n & 0x3F)) - (n >> 6);
+}
 
 // mask the n-th bit
 #define MSK_BT(N)  ((uint64_t)1 << (N))
@@ -176,13 +185,11 @@ size_t bitset::count() const {
 
 bool bitset::operator==(const bitset &other) const {
   assert(capacity() == other.capacity());
-  assert(_bits.size() == other._bits.size());
   return _bits == other._bits;
 }
 
 bool bitset::operator!=(const bitset &other) const {
   assert(capacity() == other.capacity());
-  assert(_bits.size() == other._bits.size());
   return _bits != other._bits;
 }
 
@@ -199,16 +206,14 @@ static inline bool subset(uint64_t a, uint64_t b) {
   return (a & ~b) == 0;
 }
 
-static inline bool subset_proper(uint64_t a, uint64_t b) {
-  return subset(a, b) && a != b;
-}
-
 static bool subset_check(const bitset::bitstore &a, const bitset::bitstore &b, bool proper) {
   // check metadata
+  bool equal = proper;
   auto it1 = a.cbegin();
   auto it2 = b.cbegin();
   do {
     if (!subset(*it1, *it2)) return false;
+    equal = equal && (*it1 == *it2);
   } while (*(it1++) & *(it2++) & M_NEXT_MSK);
 
   // check data
@@ -223,16 +228,20 @@ static bool subset_check(const bitset::bitstore &a, const bitset::bitstore &b, b
     assert(!(s & c)); // either check or skip
     for (; c; c >>= 1, s >>= 1) {
       if (LB(c)) {
-        if (!((proper ? subset_proper : subset)(*it1, *it2))) return false;
-        it1++; it2++;
+        if (!subset(*it1, *it2)) return false;
+        equal = equal && (*it1 == *it2);
+        ++it1; ++it2;
       } else if (LB(s)) {
-        it2++;
+        assert(!equal);
+        ++it2;
       }
     }
+    assert(!count_bits(s) || !equal);
     it2 += count_bits(s);
   } while (*(m1++) & *(m2++) & M_NEXT_MSK);
 
-  return true;
+  // check for proper => !equal
+  return !proper || !equal;
 }
 
 bool bitset::operator<=(const bitset &other) const {
@@ -374,4 +383,115 @@ void bitset::operator^=(const bitset &other) {
   assert(capacity() == other.capacity());
   const auto o = [](uint64_t a, uint64_t b) { return a ^ b; };
   update(_bits, other._bits, o);
+}
+
+/** sets p to the index of the next 1 in b. returns true if one exist */
+static inline bool next_bit(uint64_t b, size_t &p) {
+  assert(p < BITS);
+  uint64_t v = b & ~MSK_LO(p + 1);
+  assert(!v || p < std::countr_zero(v));
+  p = std::countr_zero(v);
+  return v;
+}
+
+static inline bool first_bit(uint64_t b, size_t &p) {
+  p = std::countr_zero(b);
+  return b;
+}
+
+unsigned bitset::iterator::operator*() const {
+  assert(_pos_d < BITS);
+  return ((_it_m - _b._bits.cbegin()) * MS + _pos_m) * BITS + _pos_d;
+}
+
+void bitset::iterator::next() {
+  if (_it_d == _b._bits.cend()) {
+    return;
+  }
+
+  // find the next bit in the data
+  if (next_bit(*_it_d, _pos_d)) {
+    // next bit found
+    return;
+  }
+
+  // no more bits, get the next data byte
+  _it_d++;
+  // no more bytes, we're at the end
+  if (_it_d == _b._bits.cend()) {
+    _pos_d = 0;
+    return;
+  }
+
+  // find the first bit in new word
+  bool f = first_bit(*_it_d, _pos_d);
+  assert(f); (void)f;
+
+  // find the next metadata bit
+  if (next_bit(*_it_m & M_DATA_MSK, _pos_m)) {
+    // next bit found
+    return;
+  }
+
+  // next metadata word
+  do {
+    assert(*_it_m & M_NEXT_MSK);
+    _it_m++;
+  } while (!first_bit(*_it_m & M_DATA_MSK, _pos_m));
+
+}
+
+bitset::iterator& bitset::iterator::operator++() {
+  next();
+  return *this;
+}
+
+bitset::iterator bitset::iterator::operator++(int) {
+  auto o = *this;
+  next();
+  return o;
+}
+
+bool bitset::iterator::operator==(const bitset::iterator &other) {
+  assert(std::addressof(other._b) == std::addressof(_b));
+  return _it_d == other._it_d && _pos_d == other._pos_d;
+}
+
+bool bitset::iterator::operator!=(const bitset::iterator &other) {
+  return !(*this == other);
+}
+
+bitset::iterator::iterator(const bitset &bs) : _b(bs) { }
+
+bitset::iterator bitset::iterator::begin(const bitset &bs) {
+  bitset::iterator it(bs);
+  // set the iterator and skip metadata for data
+  it._it_d = bs._bits.cbegin();
+  while(*(it._it_d++) & M_NEXT_MSK);
+
+  if (it._it_d == bs._bits.cend()) {
+    // we're empty
+    assert(bs.empty());
+    it._it_m = bs._bits.cend();
+    it._pos_m = it._pos_d = 0;
+  } else {
+    // find the first element
+    it._it_m = bs._bits.cbegin();
+    assert(*it._it_m); // either set of the next bit is set
+    for (; !(*it._it_m & M_DATA_MSK); ++it._it_m);
+    bool f_m = first_bit(*it._it_m, it._pos_m);
+    bool f_d = first_bit(*it._it_d, it._pos_d);
+    assert(f_m); (void)f_m;
+    assert(f_d); (void)f_d;
+  }
+  return it;
+}
+
+bitset::iterator bitset::iterator::end(const bitset &bs) {
+  bitset::iterator it(bs);
+  it._it_d = bs._bits.cend();
+  it._it_m = bs._bits.cend();
+  it._pos_d = 0;
+  it._pos_m = 0;
+  return it;
 }

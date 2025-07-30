@@ -62,6 +62,33 @@ public:
 
   using bitstore = std::vector<uint64_t>;
 
+  struct iterator {
+    using iterator_category = std::forward_iterator_tag;
+
+    unsigned operator*() const;
+    iterator& operator++();
+    iterator operator++(int);
+    bool operator==(const iterator &other);
+    bool operator!=(const iterator &other);
+
+  private:
+    friend bitset;
+
+    explicit iterator(const bitset &bs);
+    static bitset::iterator begin(const bitset &bs);
+    static bitset::iterator end(const bitset &bs);
+    void next();
+
+    const bitset &_b;
+    bitstore::const_iterator _it_m;
+    bitstore::const_iterator _it_d;
+    size_t _pos_m{}; // position inside the metadata word
+    size_t _pos_d{}; // position inside the data word
+  };
+
+  iterator cbegin() const { return bitset::iterator::begin(*this); };
+  iterator cend() const { return bitset::iterator::end(*this); };
+
 private:
   explicit bitset(bitstore &&v) noexcept;
   bitstore _bits;
