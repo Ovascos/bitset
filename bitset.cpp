@@ -88,7 +88,7 @@ static inline void clear_bit(uint64_t &b, unsigned n) {
 }
 
 /** Counts the number of bits set in b within the first n bits. */
-static inline unsigned count_bits_lo(uint64_t b, unsigned n) {
+static inline constexpr unsigned count_bits_lo(uint64_t b, unsigned n) {
   return count_bits(b, MSK_LO(n));
 }
 
