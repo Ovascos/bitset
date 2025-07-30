@@ -34,7 +34,7 @@ static inline constexpr uint64_t msk_hi(const unsigned n) {
 // bits per metadata block
 #define MMS    (MS * BITS)
 // metadata position and offset of a bit
-#define MP(b)  ((b / BITS) / MS)
+#define MP(b)  (b / (BITS * MS))
 #define MO(b)  ((b / BITS) % MS)
 // bitmask of the next metadata identifier (MSBit) and data fields
 #define M_NEXT_MSK  MSK_HI(1)
