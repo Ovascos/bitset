@@ -1,13 +1,14 @@
 #include "bitset.hpp"
 
 #include <cassert>
+#include <climits>
 #include <algorithm>
 
 #if __cplusplus >= 202002L
 #include <bit>
 #endif
 
-#define BITS   (sizeof(uint64_t) * 8)
+#define BITS   (sizeof(uint64_t) * CHAR_BIT)
 
 // mask the lower/upper n bits
 #define MSK_LO(N)  msk_lo(N)
@@ -23,13 +24,13 @@ static inline constexpr uint64_t msk_hi(const unsigned n) {
 }
 
 // mask the n-th bit
-#define MSK_BT(N)  ((uint64_t)1 << (N))
+#define MSK_BT(N)  (1ULL << (N))
 
 // lowest bit
 #define LB(X) (X & MSK_BT(0))
 
 // metadate capacity
-#define MS     ((sizeof(uint64_t) * 8) - 1)
+#define MS     ((sizeof(uint64_t) * CHAR_BIT) - 1)
 // bits per metadata block
 #define MMS    (MS * BITS)
 // metadata position and offset of a bit
@@ -39,11 +40,41 @@ static inline constexpr uint64_t msk_hi(const unsigned n) {
 #define M_NEXT_MSK  MSK_HI(1)
 #define M_DATA_MSK  (~M_NEXT_MSK)
 
+static inline constexpr unsigned count_bits(uint64_t b, uint64_t m = -1) {
+#if __cplusplus >= 202002L
+  return std::popcount(b & m);
+#else
+  return __builtin_popcountll(b & m);
+#endif
+}
+
+static inline constexpr unsigned count_zero_r(uint64_t b) {
+#if __cplusplus >= 202002L
+  return std::countr_zero(b);
+#else
+  // not defined for 0
+  return b ? __builtin_ctzll(b) : sizeof(uint64_t) * CHAR_BIT;
+#endif
+}
 
 /** Extract the n-th bit of b. */
-static inline bool get_bit(uint64_t b, unsigned n) {
+static inline constexpr bool get_bit(uint64_t b, unsigned n) {
   assert(n < BITS);
   return b & MSK_BT(n);
+}
+
+/** sets p to the index of the next 1 in b. returns true if one exist */
+static inline bool next_bit(uint64_t b, size_t &p) {
+  assert(p < BITS);
+  uint64_t v = b & ~MSK_LO(p + 1);
+  assert(!v || p < count_zero_r(v));
+  p = count_zero_r(v);
+  return v;
+}
+
+static inline bool first_bit(uint64_t b, size_t &p) {
+  p = count_zero_r(b);
+  return b;
 }
 
 static inline void set_bit(uint64_t &b, unsigned n) {
@@ -54,14 +85,6 @@ static inline void set_bit(uint64_t &b, unsigned n) {
 static inline void clear_bit(uint64_t &b, unsigned n) {
   assert(n < BITS);
   b &= ~MSK_BT(n);
-}
-
-static inline unsigned count_bits(uint64_t b, uint64_t m = -1) {
-#if __cplusplus >= 202002L
-  return std::popcount(b & m);
-#else
-  return __builtin_popcountll(b & m);
-#endif
 }
 
 /** Counts the number of bits set in b within the first n bits. */
@@ -383,20 +406,6 @@ void bitset::operator^=(const bitset &other) {
   assert(capacity() == other.capacity());
   const auto o = [](uint64_t a, uint64_t b) { return a ^ b; };
   update(_bits, other._bits, o);
-}
-
-/** sets p to the index of the next 1 in b. returns true if one exist */
-static inline bool next_bit(uint64_t b, size_t &p) {
-  assert(p < BITS);
-  uint64_t v = b & ~MSK_LO(p + 1);
-  assert(!v || p < std::countr_zero(v));
-  p = std::countr_zero(v);
-  return v;
-}
-
-static inline bool first_bit(uint64_t b, size_t &p) {
-  p = std::countr_zero(b);
-  return b;
 }
 
 unsigned bitset::iterator::operator*() const {
