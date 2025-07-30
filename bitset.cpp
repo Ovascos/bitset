@@ -324,7 +324,7 @@ static bitset::bitstore combine(const bitset::bitstore &a, const bitset::bitstor
   // clear the next bit for the last metadata word
   out[mo-1] &= ~M_NEXT_MSK;
 
-  return std::move(out);
+  return out;
 }
 
 bitset bitset::operator&(const bitset &other) const {  // check metadata
