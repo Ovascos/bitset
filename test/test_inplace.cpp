@@ -60,3 +60,22 @@ TEST_CASE("inplace: xor") {
   a ^= b;
   REQUIRE(a == ref);
 }
+
+TEST_CASE("clear") {
+  bitset a(2*4032);
+  REQUIRE(a.capacity() == 2*4032);
+  a.clear();
+  REQUIRE(a.capacity() == 2*4032);
+}
+
+TEST_CASE("resize") {
+  bitset a(1);
+  REQUIRE(a.capacity() == 4032);
+  a.resize(4032);
+  REQUIRE(a.capacity() == 4032);
+
+  bitset b(4032);
+  REQUIRE(b.capacity() == 4032);
+  b.resize(4032 * 2);
+  REQUIRE(b.capacity() == 2*4032);
+}
