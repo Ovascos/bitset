@@ -354,10 +354,9 @@ static void update(bitset::bitstore &a, const bitset::bitstore &b, const op_t op
     }
     assert(rem >= 0);
     o >>= rem;
-    a[m1] = o;
-    assert((o & M_DATA_MSK) == o);
+    a[m1] = o | (b[m2] & M_NEXT_MSK);
+    assert((a[m1] & M_NEXT_MSK) == (b[m2] & M_NEXT_MSK));
   } while (a[m1++] & b[m2++] & M_NEXT_MSK);
-  assert((a[m1-1] & M_NEXT_MSK) == (b[m2-1] & M_NEXT_MSK));
 
   // clear all empty fields
   a.erase(std::remove(a.begin() + m1, a.end(), 0), a.end());
@@ -476,4 +475,20 @@ bitset::iterator bitset::iterator::end(const bitset &bs) {
   it._pos_d = 0;
   it._pos_m = 0;
   return it;
+}
+
+std::string bitset::to_string() const {
+  std::string result;
+  result.reserve(capacity() + (capacity() / 8) + 1); // reserve space for the string
+  for (size_t i = 0; i < capacity(); ++i) {
+    if (_bits[i / (BITS*BITS)] >> ((i / BITS) % BITS) == 0) {
+      result += " ..."; // add space for readability
+      break;
+    }
+    result += get(i) ? '1' : '0';
+    if (i % 8 == 7 && i < capacity() - 1) {
+      result += ' ';
+    }
+  }
+  return result;
 }
