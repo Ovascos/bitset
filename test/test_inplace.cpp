@@ -79,3 +79,18 @@ TEST_CASE("resize") {
   b.resize(4032 * 2);
   REQUIRE(b.capacity() == 2*4032);
 }
+
+TEST_CASE("Counter with three metadata blocks") {
+  bitset a(8065);
+  a.set(3928, true);
+  a.set(3967, true);
+  a.set(4007, true);
+  a.set(5000, true);
+
+  REQUIRE(a.count() == 4);
+
+  a.clear();
+  REQUIRE(a.count() == 0);
+  a.set(253, true);
+  REQUIRE(a.count() == 1);
+}

@@ -154,6 +154,7 @@ void bitset::clear() {
   do {
     *it &= M_NEXT_MSK;
   } while(*(it++) & M_NEXT_MSK);
+  _bits.resize(it - _bits.begin());
 }
 
 bool bitset::empty() const {
